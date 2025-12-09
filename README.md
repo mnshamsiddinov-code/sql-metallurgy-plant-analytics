@@ -90,8 +90,7 @@ The repository will include:
 
 ## 4. Technologies
 
-- SQL (relational database)
-- Any SQL engine (e.g. SQLite / PostgreSQL / SQL Server) — to be specified in scripts and documentation
+- SQL Server Studio (relational database)
 
 ---
 
@@ -185,5 +184,4 @@ The repository will include:
 
 ## 4. Технологии
 
-- SQL (реляционная база данных)
-- Любая SQL-СУБД (например, SQLite / PostgreSQL / SQL Server) — уточняется в скриптах и документации
+- SQL Server Studio (реляционная база данных)
