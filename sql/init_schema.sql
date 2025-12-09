@@ -52,11 +52,10 @@ CREATE TABLE IF NOT EXISTS matte_analysis (
     cu_matte_pct        REAL,   -- Cu в штейне, %
     fe_matte_pct        REAL,   -- Fe в штейне, %
     s_matte_pct         REAL,   -- S в штейне, %
-    matte_mass_t        REAL,   -- масса штейна, т
+    matte_mass_t        REAL,   -- Масса штейна, т
 
     FOREIGN KEY (heat_id) REFERENCES heats(heat_id)
 );
-
 --------------------------------------------------
 -- 4. slag_analysis – состав шлака
 --------------------------------------------------
