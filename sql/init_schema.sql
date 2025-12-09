@@ -1,74 +1,103 @@
--- init_schema.sql
--- Vanyukov furnace smelting database schema
--- Dialect: SQLite-compatible SQL
+------------------------------------------------------------
+-- Vanyukov Furnace Smelting Database Schema (SQL Server)
+-- Author: <your_name>
+-- This script creates all tables required for the project
+-- Compatible with Microsoft SQL Server (T-SQL)
+------------------------------------------------------------
 
-PRAGMA foreign_keys = ON;
+-- Create database if needed (optional)
+-- CREATE DATABASE VanyukovFurnaceAnalytics;
+-- GO
 
---------------------------------------------------
--- 1. furnaces – справочник печей
---------------------------------------------------
-CREATE TABLE IF NOT EXISTS furnaces (
-    furnace_id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    furnace_name    TEXT NOT NULL,
-    location        TEXT,
+-- Use database
+-- USE VanyukovFurnaceAnalytics;
+-- GO
+
+------------------------------------------------------------
+-- 1. Drop tables if they already exist (for re-creation)
+------------------------------------------------------------
+IF OBJECT_ID('dbo.slag_analysis', 'U') IS NOT NULL DROP TABLE dbo.slag_analysis;
+IF OBJECT_ID('dbo.matte_analysis', 'U') IS NOT NULL DROP TABLE dbo.matte_analysis;
+IF OBJECT_ID('dbo.heats', 'U') IS NOT NULL DROP TABLE dbo.heats;
+IF OBJECT_ID('dbo.furnaces', 'U') IS NOT NULL DROP TABLE dbo.furnaces;
+GO
+
+------------------------------------------------------------
+-- 2. furnaces – reference table for furnaces
+------------------------------------------------------------
+CREATE TABLE dbo.furnaces (
+    furnace_id      INT IDENTITY(1,1) PRIMARY KEY,
+    furnace_name    NVARCHAR(100) NOT NULL,
+    location        NVARCHAR(100),
     startup_date    DATE,
-    status          TEXT    -- e.g. 'active', 'maintenance', 'shutdown'
+    status          NVARCHAR(50)   -- e.g. active / maintenance / shutdown
 );
+GO
 
---------------------------------------------------
--- 2. heats – отдельные плавки в печи Ванюкова
---------------------------------------------------
-CREATE TABLE IF NOT EXISTS heats (
-    heat_id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-    furnace_id              INTEGER NOT NULL,
-    heat_start_time         DATETIME NOT NULL,
-    heat_end_time           DATETIME NOT NULL,
+------------------------------------------------------------
+-- 3. heats – smelting operations (one row = one heat)
+------------------------------------------------------------
+CREATE TABLE dbo.heats (
+    heat_id                 INT IDENTITY(1,1) PRIMARY KEY,
+    furnace_id              INT NOT NULL,
+    heat_start_time         DATETIME2 NOT NULL,
+    heat_end_time           DATETIME2 NOT NULL,
 
-    -- Свойства шихты и режима
-    concentrate_moisture_pct    REAL,   -- влажность концентрата, %
-    blast_rate_nm3_h            REAL,   -- расход дутья, нм3/ч
+    -- Feed and operating conditions
+    concentrate_moisture_pct    FLOAT,
+    blast_rate_nm3_h            FLOAT,
 
-    -- Параметры газов и теплового режима
-    off_gas_temperature_c       REAL,   -- температура отходящих газов, °C
+    -- Gas and thermal conditions
+    off_gas_temperature_c       FLOAT,
+    wall_temperature_c          FLOAT,
+    roof_temperature_c          FLOAT,
 
-    -- Состояние печи / перегрев / износ
-    wall_temperature_c          REAL,   -- температура стен, °C
-    roof_temperature_c          REAL,   -- температура свода, °C
-    overheating_flag            INTEGER DEFAULT 0,   -- 0 = нет, 1 = да
-    overheating_zone            TEXT,   -- описание зоны перегрева (если есть)
-    wear_rate_mm_per_day        REAL,   -- скорость износа футеровки
+    -- Overheating and refractory wear
+    overheating_flag            BIT DEFAULT 0,
+    overheating_zone            NVARCHAR(100),
+    wear_rate_mm_per_day        FLOAT,
 
-    -- Внешний ключ
-    FOREIGN KEY (furnace_id) REFERENCES furnaces(furnace_id)
+    CONSTRAINT fk_heats_furnace
+        FOREIGN KEY (furnace_id) REFERENCES dbo.furnaces(furnace_id)
 );
+GO
 
---------------------------------------------------
--- 3. matte_analysis – состав штейна
---------------------------------------------------
-CREATE TABLE IF NOT EXISTS matte_analysis (
-    matte_analysis_id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    heat_id             INTEGER NOT NULL,
+------------------------------------------------------------
+-- 4. matte_analysis – matte composition per heat
+------------------------------------------------------------
+CREATE TABLE dbo.matte_analysis (
+    matte_analysis_id   INT IDENTITY(1,1) PRIMARY KEY,
+    heat_id             INT NOT NULL,
 
-    cu_matte_pct        REAL,   -- Cu в штейне, %
-    fe_matte_pct        REAL,   -- Fe в штейне, %
-    s_matte_pct         REAL,   -- S в штейне, %
-    matte_mass_t        REAL,   -- Масса штейна, т
+    cu_matte_pct        FLOAT,   -- % Cu in matte
+    fe_matte_pct        FLOAT,   -- % Fe in matte
+    s_matte_pct         FLOAT,   -- % S in matte
+    matte_mass_t        FLOAT,   -- mass of matte, tons
 
-    FOREIGN KEY (heat_id) REFERENCES heats(heat_id)
+    CONSTRAINT fk_matte_heat
+        FOREIGN KEY (heat_id) REFERENCES dbo.heats(heat_id)
 );
---------------------------------------------------
--- 4. slag_analysis – состав шлака
---------------------------------------------------
-CREATE TABLE IF NOT EXISTS slag_analysis (
-    slag_analysis_id    INTEGER PRIMARY KEY AUTOINCREMENT,
-    heat_id             INTEGER NOT NULL,
+GO
 
-    cu_slag_pct         REAL,   -- Cu в шлаке, %
-    fe_slag_pct         REAL,   -- Fe в шлаке, %
-    feo_pct             REAL,   -- FeO, %
-    fe3o4_pct           REAL,   -- Fe3O4, %
-    fluxes_t            REAL,   -- шлакообразующие, т
-    slag_mass_t         REAL,   -- масса шлака, т
+------------------------------------------------------------
+-- 5. slag_analysis – slag composition per heat
+------------------------------------------------------------
+CREATE TABLE dbo.slag_analysis (
+    slag_analysis_id    INT IDENTITY(1,1) PRIMARY KEY,
+    heat_id             INT NOT NULL,
 
-    FOREIGN KEY (heat_id) REFERENCES heats(heat_id)
+    cu_slag_pct         FLOAT,
+    fe_slag_pct         FLOAT,
+    feo_pct             FLOAT,
+    fe3o4_pct           FLOAT,
+    fluxes_t            FLOAT,
+    slag_mass_t         FLOAT,
+
+    CONSTRAINT fk_slag_heat
+        FOREIGN KEY (heat_id) REFERENCES dbo.heats(heat_id)
 );
+GO
+
+------------------------------------------------------------
+-- SCHEMA CREATED SUCCESSFULLY
+------------------------------------------------------------
