@@ -207,3 +207,76 @@ SELECT
         0
     ) AS pearson_correlation;
 
+------------------------------------------------------------
+-- Query 08: Detection of abnormal wall overheating (z-score)
+-- Description:
+--   Calculates z-score for wall temperature for each heat
+--   and returns top heats with the highest deviation above
+--   the mean.
+-- Purpose:
+--   Used to identify potential overheating conditions.
+--   As a rule of thumb, heats with z_score > 2 can be
+--   considered statistically abnormal.
+------------------------------------------------------------
+
+;WITH temp_stats AS (
+    SELECT
+        AVG(wall_temperature_c)   AS avg_wall_temp,
+        STDEV(wall_temperature_c) AS std_wall_temp
+    FROM heats
+    WHERE wall_temperature_c IS NOT NULL
+),
+anomalous_heats AS (
+    SELECT
+        h.heat_id,
+        h.heat_start_time,
+        h.wall_temperature_c,
+        h.roof_temperature_c,
+        h.overheating_flag,
+        ts.avg_wall_temp,
+        ts.std_wall_temp,
+        (h.wall_temperature_c - ts.avg_wall_temp) /
+        NULLIF(ts.std_wall_temp, 0) AS z_score
+    FROM heats h
+    CROSS JOIN temp_stats ts
+)
+
+SELECT TOP 20
+    heat_id,
+    heat_start_time,
+    wall_temperature_c,
+    roof_temperature_c,
+    overheating_flag,
+    z_score
+FROM anomalous_heats
+ORDER BY 
+    z_score DESC;
+
+------------------------------------------------------------
+-- Query 09: Slag-to-Matte Mass Ratio (material balance indicator)
+-- Description:
+--   Calculates the mass ratio between slag and matte for each heat.
+--   A high slag-to-matte ratio may indicate unstable operation,
+--   excessive flux addition, poor phase separation, or oxidation issues.
+--
+-- Purpose:
+--   This query is used to monitor the material balance of the furnace
+--   and identify heats with abnormally high slag generation relative
+--   to matte production.
+------------------------------------------------------------
+
+SELECT TOP 20
+    h.heat_id,
+    h.heat_start_time,
+    ma.matte_mass_t,
+    sa.slag_mass_t,
+    ROUND(sa.slag_mass_t / NULLIF(ma.matte_mass_t, 0), 3) AS slag_to_matte_ratio
+FROM heats h
+INNER JOIN matte_analysis ma
+    ON h.heat_id = ma.heat_id
+INNER JOIN slag_analysis sa
+    ON h.heat_id = sa.heat_id
+ORDER BY
+    slag_to_matte_ratio DESC;
+
+
